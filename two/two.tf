@@ -6,15 +6,14 @@ terraform {
   }
 }
 
-# Configure the DigitalOcean Provider
 provider "digitalocean" {
   token = var.do_token
 }
 
-# Create a web server
-resource "digitalocean_droplet" "web" {
+resource "digitalocean_droplet" "webserver" {
+  count              = 2
   image              = var.droplet_image
-  name               = "webserver"
+  name               = "webserver-${count.index}"
   region             = var.droplet_region
   size               = var.droplet_size
   backups            = true
@@ -25,7 +24,6 @@ resource "digitalocean_droplet" "web" {
   ]
 }
 
-# Create a database server
 resource "digitalocean_droplet" "database" {
   image              = var.droplet_image
   name               = "dbserver"
@@ -39,26 +37,14 @@ resource "digitalocean_droplet" "database" {
   ]
 }
 
-resource "digitalocean_firewall" "common-firewall" {
-  name = "only-allow-ssh-http-and-https"
+resource "digitalocean_firewall" "ssh-icmp-and-outbound" {
+  name = "allow-ssh-and-icmp"
 
-  droplet_ids = [digitalocean_droplet.web.id, digitalocean_droplet.database.id]
+  droplet_ids = concat(digitalocean_droplet.webserver.*.id, [digitalocean_droplet.database.id])
 
   inbound_rule {
     protocol         = "tcp"
     port_range       = "22"
-    source_addresses = ["0.0.0.0/0", "::/0"]
-  }
-
-  inbound_rule {
-    protocol         = "tcp"
-    port_range       = "80"
-    source_addresses = ["0.0.0.0/0", "::/0"]
-  }
-
-  inbound_rule {
-    protocol         = "tcp"
-    port_range       = "443"
     source_addresses = ["0.0.0.0/0", "::/0"]
   }
 
@@ -85,14 +71,32 @@ resource "digitalocean_firewall" "common-firewall" {
   }
 }
 
-resource "digitalocean_firewall" "mysql-traffic" {
-  name = "allow-mysql-traffic-form-webserver"
+resource "digitalocean_firewall" "http-https" {
+  name = "allow-http-and-https"
+
+  droplet_ids = digitalocean_droplet.webserver.*.id
+
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "80"
+    source_addresses = ["0.0.0.0/0", "::/0"]
+  }
+
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "443"
+    source_addresses = ["0.0.0.0/0", "::/0"]
+  }
+}
+
+resource "digitalocean_firewall" "mysql" {
+  name = "allow-mysql-traffic-form-webservers"
 
   droplet_ids = [digitalocean_droplet.database.id]
 
   inbound_rule {
     protocol           = "tcp"
     port_range         = "3306"
-    source_droplet_ids = [digitalocean_droplet.web.id]
+    source_droplet_ids = digitalocean_droplet.webserver.*.id
   }
 }

@@ -1,20 +1,3 @@
-variable "do_token" {
-  type = string
-}
-variable "ssh_fingerprint" {
-  type = string
-}
-variable "droplet_image" {
-  type = string
-}
-variable "droplet_region" {
-  type = string
-}
-variable "droplet_size" {
-  type = string
-}
-
-
 terraform {
   required_providers {
     digitalocean = {
@@ -23,12 +6,10 @@ terraform {
   }
 }
 
-# Configure the DigitalOcean Provider
 provider "digitalocean" {
   token = var.do_token
 }
 
-# Create a web server
 resource "digitalocean_droplet" "web" {
   image              = var.droplet_image
   name               = "webserver"
