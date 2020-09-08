@@ -10,6 +10,7 @@ provider "digitalocean" {
   token = var.do_token
 }
 
+# Droplets
 resource "digitalocean_droplet" "webserver" {
   count              = 2
   image              = var.droplet_image
@@ -37,6 +38,28 @@ resource "digitalocean_droplet" "database" {
   ]
 }
 
+# Load Balancer
+resource "digitalocean_loadbalancer" "public" {
+  name   = "loadbalancer"
+  region = var.droplet_region
+
+  forwarding_rule {
+    entry_port     = 80
+    entry_protocol = "http"
+
+    target_port     = 80
+    target_protocol = "http"
+  }
+
+  healthcheck {
+    port     = 22
+    protocol = "tcp"
+  }
+
+  droplet_ids = digitalocean_droplet.webserver.*.id
+}
+
+# Firewalls
 resource "digitalocean_firewall" "ssh-icmp-and-outbound" {
   name = "allow-ssh-and-icmp"
 
@@ -55,13 +78,13 @@ resource "digitalocean_firewall" "ssh-icmp-and-outbound" {
 
   outbound_rule {
     protocol              = "tcp"
-    port_range            = "53"
+    port_range            = "1-65535"
     destination_addresses = ["0.0.0.0/0", "::/0"]
   }
 
   outbound_rule {
     protocol              = "udp"
-    port_range            = "53"
+    port_range            = "1-65535"
     destination_addresses = ["0.0.0.0/0", "::/0"]
   }
 
@@ -77,15 +100,15 @@ resource "digitalocean_firewall" "http-https" {
   droplet_ids = digitalocean_droplet.webserver.*.id
 
   inbound_rule {
-    protocol         = "tcp"
-    port_range       = "80"
-    source_addresses = ["0.0.0.0/0", "::/0"]
+    protocol                  = "tcp"
+    port_range                = "80"
+    source_load_balancer_uids = [digitalocean_loadbalancer.public.id]
   }
 
   inbound_rule {
-    protocol         = "tcp"
-    port_range       = "443"
-    source_addresses = ["0.0.0.0/0", "::/0"]
+    protocol                  = "tcp"
+    port_range                = "443"
+    source_load_balancer_uids = [digitalocean_loadbalancer.public.id]
   }
 }
 

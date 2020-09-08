@@ -10,6 +10,7 @@ provider "digitalocean" {
   token = var.do_token
 }
 
+# Droplet
 resource "digitalocean_droplet" "web" {
   image              = var.droplet_image
   name               = "webserver"
@@ -23,6 +24,7 @@ resource "digitalocean_droplet" "web" {
   ]
 }
 
+# Firewall
 resource "digitalocean_firewall" "web" {
   name = "only-allow-ssh-http-and-https"
 
