@@ -1,10 +1,8 @@
 variable "do_token" {
   description = "DigitalOcean API token"
-  default     = ""
 }
 variable "ssh_fingerprint" {
   description = "Fingerprint of your SSH key"
-  default     = ""
 }
 variable "droplet_image" {
   description = "Image identifier of the OS in DigitalOcean"
